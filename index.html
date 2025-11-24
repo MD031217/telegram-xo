@@ -70,6 +70,19 @@
             background: #ecf0f1;
             border-radius: 10px;
             border-left: 4px solid #3498db;
+            transition: all 0.3s ease;
+        }
+        
+        .status.thinking {
+            background: #fff3cd;
+            border-left-color: #ffc107;
+            animation: pulseStatus 1.5s infinite;
+        }
+        
+        @keyframes pulseStatus {
+            0% { background: #fff3cd; }
+            50% { background: #ffeaa7; }
+            100% { background: #fff3cd; }
         }
         
         .stats {
@@ -83,6 +96,7 @@
             padding: 8px 16px;
             border-radius: 8px;
             border-left: 3px solid #3498db;
+            transition: all 0.3s ease;
         }
         
         .stat-item.bot1 {
@@ -91,6 +105,11 @@
         
         .stat-item.bot2 {
             border-left-color: #3498db;
+        }
+        
+        .stat-item.active {
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
         
         .controls {
@@ -168,6 +187,7 @@
                 repeating-linear-gradient(90deg, transparent, transparent 39px, #bdc3c7 40px);
             background-size: 40px 40px;
             background-position: center center;
+            transition: all 0.3s ease;
         }
         
         .cell {
@@ -177,6 +197,10 @@
             transition: all 0.3s ease;
             border-radius: 50%;
             z-index: 2;
+        }
+        
+        .cell:hover {
+            background: rgba(52, 152, 219, 0.1);
         }
         
         .cell::before {
@@ -208,6 +232,15 @@
             animation: winningPulse 1s infinite;
         }
         
+        .cell.last-move {
+            animation: highlightLastMove 2s ease;
+        }
+        
+        .cell.bot-thinking {
+            background: rgba(255, 193, 7, 0.3);
+            animation: thinkingPulse 1s infinite;
+        }
+        
         @keyframes placeStone {
             0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
             70% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
@@ -218,6 +251,18 @@
             0% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); }
             70% { box-shadow: 0 0 0 10px rgba(46, 204, 113, 0); }
             100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
+        }
+        
+        @keyframes highlightLastMove {
+            0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7); }
+            50% { box-shadow: 0 0 0 15px rgba(255, 193, 7, 0.3); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
+        }
+        
+        @keyframes thinkingPulse {
+            0% { background: rgba(255, 193, 7, 0.3); }
+            50% { background: rgba(255, 193, 7, 0.6); }
+            100% { background: rgba(255, 193, 7, 0.3); }
         }
         
         .coordinates {
@@ -278,10 +323,17 @@
             border-radius: 10px;
             border-left: 4px solid #e74c3c;
             box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
         }
         
         .bot-card.bot2 {
             border-left-color: #3498db;
+        }
+        
+        .bot-card.active {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            background: #fff9e6;
         }
         
         .bot-name {
@@ -296,6 +348,34 @@
         .bot-stats {
             font-size: 0.9em;
             color: #7f8c8d;
+        }
+        
+        .thinking-indicator {
+            display: inline-block;
+            margin-left: 10px;
+        }
+        
+        .thinking-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #f39c12;
+            margin: 0 2px;
+            animation: thinkingDots 1.4s infinite;
+        }
+        
+        .thinking-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .thinking-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes thinkingDots {
+            0%, 60%, 100% { transform: scale(1); opacity: 1; }
+            30% { transform: scale(1.5); opacity: 0.7; }
         }
         
         .sidebar-section {
@@ -348,6 +428,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            transition: all 0.3s ease;
         }
         
         .move-item.bot1 {
@@ -356,6 +437,12 @@
         
         .move-item.bot2 {
             border-left-color: #3498db;
+        }
+        
+        .move-item:last-child {
+            background: #fff9e6;
+            transform: scale(1.02);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
         
         .move-time {
@@ -424,6 +511,16 @@
             font-weight: bold;
         }
         
+        .analysis-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 3;
+        }
+        
         @media (max-width: 768px) {
             .game-area {
                 flex-direction: column;
@@ -485,7 +582,7 @@
             
             <div class="sidebar">
                 <div class="bots-info">
-                    <div class="bot-card">
+                    <div class="bot-card" id="bot1Card">
                         <div class="bot-name">🤖 Бот 1 (Крестики) <span style="color: #e74c3c;">❌</span></div>
                         <div class="bot-stats">
                             <div>Алгоритм: Агрессивный с приоритетом атаки</div>
@@ -493,7 +590,7 @@
                             <div>Побед: <span id="bot1Wins">0</span></div>
                         </div>
                     </div>
-                    <div class="bot-card bot2">
+                    <div class="bot-card bot2" id="bot2Card">
                         <div class="bot-name">🤖 Бот 2 (Нолики) <span style="color: #3498db;">⭕</span></div>
                         <div class="bot-stats">
                             <div>Алгоритм: Сбалансированный защитно-атакующий</div>
@@ -535,8 +632,8 @@
         const CONFIG = {
             WIN_LENGTH: 5,
             CELL_SIZE: 40,
-            BOARD_SIZE: 19, // Стандартное поле для го-моку
-            MOVE_DELAY: 500 // Задержка между ходами
+            BOARD_SIZE: 19,
+            MOVE_DELAY: 500
         };
 
         // Состояние игры
@@ -555,7 +652,8 @@
                 draws: 0
             },
             isBattleRunning: false,
-            isPaused: false
+            isPaused: false,
+            lastMove: null
         };
 
         // Элементы DOM
@@ -571,6 +669,8 @@
         const speedValue = document.getElementById('speedValue');
         const startBtn = document.getElementById('startBtn');
         const pauseBtn = document.getElementById('pauseBtn');
+        const bot1Card = document.getElementById('bot1Card');
+        const bot2Card = document.getElementById('bot2Card');
 
         // Инициализация игры
         function initGame() {
@@ -579,9 +679,11 @@
             gameState.gameOver = false;
             gameState.moves = [];
             gameState.moveCount = 0;
+            gameState.lastMove = null;
             
             updateStatus();
             updateMovesList();
+            updateActiveBot();
             renderBoard();
         }
 
@@ -596,7 +698,8 @@
             pauseBtn.textContent = '⏸️ Пауза';
             
             initGame();
-            statusElement.textContent = 'Битва началась! Бот 1 делает ход...';
+            statusElement.textContent = 'Битва началась! Бот 1 думает...';
+            statusElement.classList.add('thinking');
             gameLoop();
         }
 
@@ -607,7 +710,10 @@
             gameState.isPaused = !gameState.isPaused;
             pauseBtn.textContent = gameState.isPaused ? '▶️ Продолжить' : '⏸️ Пауза';
             
-            if (!gameState.isPaused) {
+            if (gameState.isPaused) {
+                statusElement.classList.remove('thinking');
+            } else {
+                statusElement.classList.add('thinking');
                 gameLoop();
             }
         }
@@ -619,6 +725,7 @@
             startBtn.disabled = false;
             pauseBtn.disabled = true;
             pauseBtn.textContent = '⏸️ Пауза';
+            statusElement.classList.remove('thinking');
             initGame();
             statusElement.textContent = 'Готов к битве! Нажми "Начать битву"';
         }
@@ -628,6 +735,9 @@
             if (!gameState.isBattleRunning || gameState.isPaused || gameState.gameOver) return;
 
             const moveDelay = parseInt(speedSlider.value);
+            
+            // Показываем, что бот "думает"
+            showBotThinking();
             
             setTimeout(() => {
                 if (gameState.gameOver || !gameState.isBattleRunning || gameState.isPaused) return;
@@ -643,12 +753,48 @@
                             gameState.battleStats.gamesPlayed++;
                             updateBattleStats();
                             initGame();
-                            statusElement.textContent = 'Новая игра! Бот 1 делает ход...';
+                            statusElement.textContent = 'Новая игра! Бот 1 думает...';
+                            statusElement.classList.add('thinking');
                             gameLoop();
                         }
-                    }, 1500);
+                    }, 2000);
                 }
             }, moveDelay);
+        }
+
+        // Показать процесс "думания" бота
+        function showBotThinking() {
+            const currentBot = gameState.currentPlayer === 'x' ? 'Бот 1' : 'Бот 2';
+            statusElement.textContent = `${currentBot} думает`;
+            statusElement.classList.add('thinking');
+            
+            // Добавляем анимированные точки
+            let dots = '';
+            for (let i = 0; i < 3; i++) {
+                dots += '<span class="thinking-dot"></span>';
+            }
+            statusElement.innerHTML = `${currentBot} думает<span class="thinking-indicator">${dots}</span>`;
+            
+            // Подсвечиваем активного бота
+            updateActiveBot();
+        }
+
+        // Обновление активного бота
+        function updateActiveBot() {
+            // Сбрасываем все активные состояния
+            bot1Card.classList.remove('active');
+            bot2Card.classList.remove('active');
+            bot1StatsElement.classList.remove('active');
+            bot2StatsElement.classList.remove('active');
+            
+            // Устанавливаем активного бота
+            if (gameState.currentPlayer === 'x') {
+                bot1Card.classList.add('active');
+                bot1StatsElement.classList.add('active');
+            } else {
+                bot2Card.classList.add('active');
+                bot2StatsElement.classList.add('active');
+            }
         }
 
         // Обновление статистики битвы
@@ -662,6 +808,7 @@
 
         // Обновление статуса
         function updateStatus() {
+            statusElement.classList.remove('thinking');
             if (gameState.gameOver) {
                 statusElement.textContent = 'Игра завершена';
             } else {
@@ -684,6 +831,7 @@
                 
                 // Записываем ход
                 gameState.board[key] = gameState.currentPlayer;
+                gameState.lastMove = { x, y, player: gameState.currentPlayer };
                 gameState.moves.push({ 
                     x, y, 
                     player: gameState.currentPlayer,
@@ -714,7 +862,26 @@
                 
                 updateStatus();
                 updateMovesList();
+                updateActiveBot();
                 renderBoard();
+                
+                // Подсвечиваем последний ход
+                highlightLastMove();
+            }
+        }
+
+        // Подсветка последнего хода
+        function highlightLastMove() {
+            if (gameState.lastMove) {
+                const { x, y } = gameState.lastMove;
+                const cellElement = document.querySelector(`.cell[data-x="${x}"][data-y="${y}"]`);
+                if (cellElement) {
+                    cellElement.classList.add('last-move');
+                    // Убираем подсветку через 2 секунды
+                    setTimeout(() => {
+                        cellElement.classList.remove('last-move');
+                    }, 2000);
+                }
             }
         }
 
@@ -818,7 +985,6 @@
                 const key = `${checkX},${checkY}`;
                 
                 if (Math.abs(checkX) > 9 || Math.abs(checkY) > 9) {
-                    // Выход за границы - считаем как блок
                     continue;
                 } else if (gameState.board[key] === player) {
                     result.playerCount++;
@@ -834,7 +1000,6 @@
 
         // Оценка угрозы на линии
         function evaluateLineThreat(line, player) {
-            // Упрощенная оценка - считаем количество фигур игрока на линии
             if (line.playerCount >= 4) return 1000;
             if (line.playerCount === 3 && line.emptyCount >= 2) return 100;
             if (line.playerCount === 2 && line.emptyCount >= 3) return 10;
@@ -852,7 +1017,6 @@
             for (const dir of directions) {
                 let count = 1;
                 
-                // Проверяем в одном направлении
                 for (let i = 1; i < CONFIG.WIN_LENGTH; i++) {
                     const checkX = x + dir.dx * i;
                     const checkY = y + dir.dy * i;
@@ -863,7 +1027,6 @@
                     }
                 }
                 
-                // Проверяем в противоположном направлении
                 for (let i = 1; i < CONFIG.WIN_LENGTH; i++) {
                     const checkX = x - dir.dx * i;
                     const checkY = y - dir.dy * i;
@@ -890,7 +1053,6 @@
             for (const dir of directions) {
                 let winningCells = [{x: startX, y: startY}];
                 
-                // Проверяем в одном направлении
                 for (let i = 1; i < CONFIG.WIN_LENGTH; i++) {
                     const checkX = startX + dir.dx * i;
                     const checkY = startY + dir.dy * i;
@@ -901,7 +1063,6 @@
                     }
                 }
                 
-                // Проверяем в противоположном направлении
                 for (let i = 1; i < CONFIG.WIN_LENGTH; i++) {
                     const checkX = startX - dir.dx * i;
                     const checkY = startY - dir.dy * i;
@@ -913,7 +1074,6 @@
                 }
                 
                 if (winningCells.length >= CONFIG.WIN_LENGTH) {
-                    // Подсвечиваем выигрышные клетки
                     winningCells.forEach(cell => {
                         const cellElement = document.querySelector(`.cell[data-x="${cell.x}"][data-y="${cell.y}"]`);
                         if (cellElement) {
@@ -932,11 +1092,9 @@
             const center = Math.floor(CONFIG.BOARD_SIZE / 2);
             const boardSize = CONFIG.BOARD_SIZE * CONFIG.CELL_SIZE;
             
-            // Устанавливаем размер доски
             gameBoard.style.width = `${boardSize}px`;
             gameBoard.style.height = `${boardSize}px`;
             
-            // Создаем клетки для ВСЕГО поля
             for (let x = -center; x <= center; x++) {
                 for (let y = -center; y <= center; y++) {
                     const cell = document.createElement('div');
@@ -944,20 +1102,17 @@
                     cell.dataset.x = x;
                     cell.dataset.y = y;
                     
-                    // Позиционирование (центрируем поле)
                     const posX = (x + center) * CONFIG.CELL_SIZE;
                     const posY = (y + center) * CONFIG.CELL_SIZE;
                     
                     cell.style.left = `${posX}px`;
                     cell.style.top = `${posY}px`;
                     
-                    // Отображение фигур
                     const key = `${x},${y}`;
                     if (gameState.board[key]) {
                         cell.classList.add(gameState.board[key]);
                     }
                     
-                    // Координаты для угловых и центральных клеток
                     if (gameState.showCoordinates && 
                         (x === -center || x === 0 || x === center || 
                          y === -center || y === 0 || y === center)) {
@@ -971,7 +1126,6 @@
                 }
             }
             
-            // Центральный маркер
             const centerMarker = document.createElement('div');
             centerMarker.className = 'center-marker';
             centerMarker.style.left = `${boardSize/2}px`;
@@ -988,9 +1142,9 @@
                 return;
             }
             
-            const recentMoves = gameState.moves.slice(-10).reverse();
+            const recentMoves = gameState.moves.slice(-8).reverse();
             
-            recentMoves.forEach(move => {
+            recentMoves.forEach((move, index) => {
                 const moveItem = document.createElement('div');
                 moveItem.className = `move-item ${move.player === 'x' ? 'bot1' : 'bot2'}`;
                 const playerSymbol = move.player === 'x' ? '❌' : '⭕';
@@ -1008,6 +1162,7 @@
         // Показать сообщение о победе
         function showWinMessage(message) {
             gameState.gameOver = true;
+            statusElement.classList.remove('thinking');
             
             const winMessage = document.createElement('div');
             winMessage.className = 'win-message pulse';
@@ -1042,7 +1197,6 @@
             initGame();
             updateBattleStats();
             
-            // Обработчик изменения скорости
             speedSlider.addEventListener('input', function() {
                 const value = this.value;
                 speedValue.textContent = value + 'мс';
