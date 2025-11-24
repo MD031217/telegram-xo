@@ -5,186 +5,445 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Крестики-нолики 5 в ряд</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            background-color: #f0f0f0;
+        * {
             margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
             padding: 20px;
-            overflow: hidden;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 30px;
+            margin-top: 20px;
         }
         
         h1 {
-            color: #333;
-            margin-bottom: 20px;
+            text-align: center;
+            color: white;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
         }
         
-        .game-container {
-            display: inline-block;
-            margin: 0 auto;
-            background-color: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            max-width: 95vw;
+        .subtitle {
+            text-align: center;
+            color: white;
+            font-size: 1.2em;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+        
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding: 0 10px;
         }
         
         .game-info {
-            margin-bottom: 15px;
-            font-size: 18px;
-            color: #555;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
         
-        .game-board-container {
+        .status {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #2c3e50;
+            padding: 12px 20px;
+            background: #ecf0f1;
+            border-radius: 10px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .score {
+            font-size: 1.1em;
+            color: #7f8c8d;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            font-size: 1em;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+        
+        .btn-success {
+            background: #2ecc71;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #27ae60;
+            transform: translateY(-2px);
+        }
+        
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+        }
+        
+        .game-area {
+            display: flex;
+            gap: 30px;
+            align-items: flex-start;
+        }
+        
+        .board-container {
+            flex: 1;
             position: relative;
-            overflow: auto;
-            max-height: 70vh;
-            border: 2px solid #333;
-            margin: 0 auto;
-            background: 
-                linear-gradient(90deg, #ccc 1px, transparent 1px),
-                linear-gradient(0deg, #ccc 1px, transparent 1px);
-            background-size: 40px 40px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.1);
+            min-height: 600px;
         }
         
         #gameBoard {
             position: relative;
-            min-width: 600px;
+            width: 100%;
+            height: 100%;
             min-height: 600px;
+            cursor: grab;
+            transition: transform 0.1s ease-out;
+        }
+        
+        #gameBoard:active {
+            cursor: grabbing;
         }
         
         .cell {
+            position: absolute;
             width: 40px;
             height: 40px;
-            position: absolute;
             cursor: pointer;
-            background-color: rgba(255, 255, 255, 0.8);
-            border: 1px solid #ddd;
-            box-sizing: border-box;
+            transition: all 0.2s ease;
+            border-radius: 50%;
         }
         
         .cell:hover {
-            background-color: rgba(240, 240, 240, 0.9);
+            background: rgba(52, 152, 219, 0.1);
+            transform: scale(1.1);
         }
         
-        .x::before, .x::after {
+        .cell::before {
             content: '';
             position: absolute;
-            width: 80%;
-            height: 4px;
-            background-color: #e74c3c;
-            top: 50%;
-            left: 10%;
-        }
-        
-        .x::before {
-            transform: translateY(-50%) rotate(45deg);
-        }
-        
-        .x::after {
-            transform: translateY(-50%) rotate(-45deg);
-        }
-        
-        .o::before {
-            content: '';
-            position: absolute;
-            width: 70%;
-            height: 70%;
-            border: 4px solid #3498db;
-            border-radius: 50%;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
+            border-radius: 50%;
+            transition: all 0.3s ease;
         }
         
-        .coordinates {
-            font-size: 10px;
-            color: #999;
+        .cell.x::before {
+            width: 30px;
+            height: 30px;
+            background: #e74c3c;
+            box-shadow: 0 3px 6px rgba(231, 76, 60, 0.3);
+        }
+        
+        .cell.o::before {
+            width: 30px;
+            height: 30px;
+            background: #3498db;
+            box-shadow: 0 3px 6px rgba(52, 152, 219, 0.3);
+        }
+        
+        .grid-line {
             position: absolute;
-            bottom: 2px;
-            right: 2px;
+            background: #bdc3c7;
+            pointer-events: none;
+        }
+        
+        .grid-line.horizontal {
+            width: 100%;
+            height: 1px;
+            left: 0;
+        }
+        
+        .grid-line.vertical {
+            height: 100%;
+            width: 1px;
+            top: 0;
         }
         
         .center-marker {
             position: absolute;
-            width: 2px;
-            height: 2px;
-            background: red;
+            width: 8px;
+            height: 8px;
+            background: #e74c3c;
+            border-radius: 50%;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
+            z-index: 10;
         }
         
-        .controls {
-            margin-top: 20px;
+        .coordinates {
+            position: absolute;
+            font-size: 10px;
+            color: #95a5a6;
+            pointer-events: none;
+            z-index: 5;
+            background: rgba(255,255,255,0.8);
+            padding: 2px 4px;
+            border-radius: 3px;
         }
         
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
-            background-color: #2ecc71;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            margin: 0 5px;
+        .sidebar {
+            width: 300px;
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
         }
         
-        button:hover {
-            background-color: #27ae60;
+        .sidebar-section {
+            margin-bottom: 25px;
         }
         
-        button:disabled {
-            background-color: #95a5a6;
-            cursor: not-allowed;
-        }
-        
-        .win-message {
-            font-size: 24px;
+        .sidebar-title {
+            font-size: 1.2em;
             font-weight: bold;
-            margin-top: 15px;
-            color: #e74c3c;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+        }
+        
+        .zoom-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .zoom-btn {
+            width: 40px;
+            height: 40px;
+            border: none;
+            background: #ecf0f1;
+            border-radius: 8px;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .zoom-btn:hover {
+            background: #3498db;
+            color: white;
+        }
+        
+        .zoom-level {
+            font-weight: bold;
+            color: #2c3e50;
+            min-width: 60px;
+            text-align: center;
         }
         
         .view-controls {
-            margin: 10px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
         
-        .view-controls button {
-            padding: 5px 10px;
-            font-size: 14px;
-            background-color: #3498db;
+        .view-btn {
+            padding: 10px 15px;
+            background: #ecf0f1;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: left;
+        }
+        
+        .view-btn:hover {
+            background: #3498db;
+            color: white;
+        }
+        
+        .last-moves {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .move-item {
+            padding: 8px 12px;
+            background: white;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            border-left: 3px solid #3498db;
+            font-size: 0.9em;
+        }
+        
+        .move-item.x {
+            border-left-color: #e74c3c;
+        }
+        
+        .move-item.o {
+            border-left-color: #3498db;
+        }
+        
+        .win-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255,255,255,0.95);
+            padding: 40px 60px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            z-index: 1000;
+            animation: popIn 0.5s ease;
+        }
+        
+        @keyframes popIn {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+        
+        .win-title {
+            font-size: 2em;
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+        
+        .win-subtitle {
+            color: #7f8c8d;
+            margin-bottom: 25px;
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        @media (max-width: 768px) {
+            .game-area {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+            }
+            
+            .game-header {
+                flex-direction: column;
+                gap: 15px;
+            }
         }
     </style>
 </head>
 <body>
-    <h1>Крестики-нолики 5 в ряд на бесконечном поле</h1>
+    <h1>🎯 Крестики-нолики 5 в ряд</h1>
+    <div class="subtitle">Бесконечное поле • Умный бот • Профессиональный интерфейс</div>
     
-    <div class="game-container">
-        <div class="game-info">
-            <span id="status">Ваш ход (X)</span>
-        </div>
-        
-        <div class="view-controls">
-            <button onclick="zoomOut()">-</button>
-            <button onclick="resetView()">Сброс вида</button>
-            <button onclick="zoomIn()">+</button>
-            Масштаб: <span id="zoomLevel">100%</span>
-        </div>
-        
-        <div class="game-board-container" id="boardContainer">
-            <div id="gameBoard">
-                <!-- Клетки будут добавляться динамически -->
-                <div class="center-marker"></div>
+    <div class="container">
+        <div class="game-header">
+            <div class="game-info">
+                <div class="status" id="status">Ваш ход (Крестики)</div>
+                <div class="score" id="score">Ходов: 0</div>
+            </div>
+            <div class="controls">
+                <button class="btn btn-primary" onclick="makeBotMove()" id="botMoveBtn">
+                    🤖 Ход бота
+                </button>
+                <button class="btn btn-success" onclick="initGame()" id="resetBtn">
+                    🔄 Новая игра
+                </button>
             </div>
         </div>
         
-        <div class="controls">
-            <button id="resetBtn">Новая игра</button>
-            <button id="botMoveBtn">Ход бота</button>
+        <div class="game-area">
+            <div class="board-container">
+                <div id="gameBoard">
+                    <!-- Игровая доска будет создана здесь -->
+                    <div class="center-marker"></div>
+                </div>
+            </div>
+            
+            <div class="sidebar">
+                <div class="sidebar-section">
+                    <div class="sidebar-title">Управление видом</div>
+                    <div class="zoom-controls">
+                        <button class="zoom-btn" onclick="zoomOut()">-</button>
+                        <div class="zoom-level" id="zoomLevel">100%</div>
+                        <button class="zoom-btn" onclick="zoomIn()">+</button>
+                    </div>
+                    <div class="view-controls">
+                        <button class="view-btn" onclick="resetView()">🎯 Центрировать поле</button>
+                        <button class="view-btn" onclick="showLastMove()">📍 Показать последний ход</button>
+                        <button class="view-btn" onclick="toggleCoordinates()">📐 Координаты: Вкл</button>
+                    </div>
+                </div>
+                
+                <div class="sidebar-section">
+                    <div class="sidebar-title">Последние ходы</div>
+                    <div class="last-moves" id="lastMoves">
+                        <div class="move-item">Игра еще не началась</div>
+                    </div>
+                </div>
+                
+                <div class="sidebar-section">
+                    <div class="sidebar-title">Управление</div>
+                    <div style="font-size: 0.9em; color: #7f8c8d; line-height: 1.5;">
+                        <p>• <strong>ЛКМ</strong> - сделать ход</p>
+                        <p>• <strong>ПКМ + перемещение</strong> - двигать поле</p>
+                        <p>• <strong>Колесо мыши</strong> - масштабировать</p>
+                        <p>• <strong>Цель</strong> - собрать 5 в ряд</p>
+                    </div>
+                </div>
+            </div>
         </div>
-        
-        <div id="winMessage" class="win-message"></div>
     </div>
 
     <script>
@@ -192,31 +451,34 @@
         const CONFIG = {
             WIN_LENGTH: 5,
             CELL_SIZE: 40,
-            VISIBLE_RADIUS: 8, // Сколько клеток показывать вокруг центра
-            ZOOM_LEVELS: [0.5, 0.75, 1, 1.25, 1.5, 2]
+            GRID_SIZE: 31, // Нечетное число для симметрии
+            ZOOM_LEVELS: [0.3, 0.5, 0.75, 1, 1.25, 1.5, 2, 3],
+            INITIAL_ZOOM: 3
         };
 
         // Состояние игры
         let gameState = {
-            board: {}, // { "x,y": "x" или "o" }
+            board: {},
             currentPlayer: 'x',
             gameOver: false,
-            zoomLevel: 2, // Индекс в ZOOM_LEVELS
-            viewOffset: { x: 0, y: 0 }
+            zoomLevel: CONFIG.INITIAL_ZOOM,
+            viewOffset: { x: 0, y: 0 },
+            lastMoves: [],
+            moveCount: 0,
+            showCoordinates: true
         };
 
         // Элементы DOM
         const gameBoard = document.getElementById('gameBoard');
-        const boardContainer = document.getElementById('boardContainer');
         const statusElement = document.getElementById('status');
-        const winMessageElement = document.getElementById('winMessage');
-        const resetBtn = document.getElementById('resetBtn');
-        const botMoveBtn = document.getElementById('botMoveBtn');
+        const scoreElement = document.getElementById('score');
         const zoomLevelElement = document.getElementById('zoomLevel');
+        const lastMovesElement = document.getElementById('lastMoves');
 
         // Переменные для перетаскивания
         let isDragging = false;
         let lastMouseX, lastMouseY;
+        let animationFrameId;
 
         // Инициализация игры
         function initGame() {
@@ -224,26 +486,31 @@
                 board: {},
                 currentPlayer: 'x',
                 gameOver: false,
-                zoomLevel: 2,
-                viewOffset: { x: 0, y: 0 }
+                zoomLevel: CONFIG.INITIAL_ZOOM,
+                viewOffset: { x: 0, y: 0 },
+                lastMoves: [],
+                moveCount: 0,
+                showCoordinates: true
             };
             
-            winMessageElement.textContent = '';
-            statusElement.textContent = 'Ваш ход (X)';
+            statusElement.textContent = 'Ваш ход (Крестики)';
+            statusElement.style.borderLeftColor = '#e74c3c';
+            scoreElement.textContent = 'Ходов: 0';
+            updateLastMoves();
             updateZoom();
             renderBoard();
+            resetView();
+            
+            // Убираем сообщение о победе если было
+            const winMessage = document.querySelector('.win-message');
+            if (winMessage) winMessage.remove();
         }
 
         // Обновление масштаба
         function updateZoom() {
             const scale = CONFIG.ZOOM_LEVELS[gameState.zoomLevel];
             gameBoard.style.transform = `scale(${scale})`;
-            zoomLevelElement.textContent = `${scale * 100}%`;
-            
-            // Обновляем размер контейнера для корректного скролла
-            const baseSize = CONFIG.CELL_SIZE * (CONFIG.VISIBLE_RADIUS * 2 + 1);
-            boardContainer.style.width = `${baseSize * scale}px`;
-            boardContainer.style.height = `${baseSize * scale}px`;
+            zoomLevelElement.textContent = `${Math.round(scale * 100)}%`;
         }
 
         function zoomIn() {
@@ -263,64 +530,87 @@
         }
 
         function resetView() {
-            gameState.zoomLevel = 2;
             gameState.viewOffset = { x: 0, y: 0 };
-            updateZoom();
             renderBoard();
-            centerView();
         }
 
-        function centerView() {
-            boardContainer.scrollLeft = boardContainer.scrollWidth / 2 - boardContainer.clientWidth / 2;
-            boardContainer.scrollTop = boardContainer.scrollHeight / 2 - boardContainer.clientHeight / 2;
+        function showLastMove() {
+            if (gameState.lastMoves.length > 0) {
+                const lastMove = gameState.lastMoves[gameState.lastMoves.length - 1];
+                centerOnCell(lastMove.x, lastMove.y);
+            }
+        }
+
+        function toggleCoordinates() {
+            gameState.showCoordinates = !gameState.showCoordinates;
+            document.querySelector('.view-btn:nth-child(3)').textContent = 
+                `📐 Координаты: ${gameState.showCoordinates ? 'Вкл' : 'Выкл'}`;
+            renderBoard();
         }
 
         // Отрисовка игрового поля
         function renderBoard() {
-            // Очищаем только клетки, оставляем center-marker
-            const cells = gameBoard.querySelectorAll('.cell');
-            cells.forEach(cell => cell.remove());
+            gameBoard.innerHTML = '';
             
             const scale = CONFIG.ZOOM_LEVELS[gameState.zoomLevel];
-            const scaledCellSize = CONFIG.CELL_SIZE * scale;
+            const boardSize = CONFIG.GRID_SIZE * CONFIG.CELL_SIZE;
+            const offsetX = gameState.viewOffset.x * CONFIG.CELL_SIZE;
+            const offsetY = gameState.viewOffset.y * CONFIG.CELL_SIZE;
             
-            // Определяем видимую область
-            const centerX = Math.floor(gameBoard.offsetWidth / 2 / scaledCellSize) - gameState.viewOffset.x;
-            const centerY = Math.floor(gameBoard.offsetHeight / 2 / scaledCellSize) - gameState.viewOffset.y;
+            // Сетка
+            for (let i = -Math.floor(CONFIG.GRID_SIZE/2); i <= Math.floor(CONFIG.GRID_SIZE/2); i++) {
+                // Горизонтальные линии
+                const hLine = document.createElement('div');
+                hLine.className = 'grid-line horizontal';
+                hLine.style.top = `${boardSize/2 + i * CONFIG.CELL_SIZE - offsetY}px`;
+                gameBoard.appendChild(hLine);
+                
+                // Вертикальные линии
+                const vLine = document.createElement('div');
+                vLine.className = 'grid-line vertical';
+                vLine.style.left = `${boardSize/2 + i * CONFIG.CELL_SIZE - offsetX}px`;
+                gameBoard.appendChild(vLine);
+            }
             
-            // Создаем клетки в видимой области
-            for (let dx = -CONFIG.VISIBLE_RADIUS; dx <= CONFIG.VISIBLE_RADIUS; dx++) {
-                for (let dy = -CONFIG.VISIBLE_RADIUS; dy <= CONFIG.VISIBLE_RADIUS; dy++) {
-                    const x = centerX + dx;
-                    const y = centerY + dy;
-                    
+            // Клетки и фигуры
+            for (let x = -Math.floor(CONFIG.GRID_SIZE/2); x <= Math.floor(CONFIG.GRID_SIZE/2); x++) {
+                for (let y = -Math.floor(CONFIG.GRID_SIZE/2); y <= Math.floor(CONFIG.GRID_SIZE/2); y++) {
                     const cell = document.createElement('div');
                     cell.className = 'cell';
                     cell.dataset.x = x;
                     cell.dataset.y = y;
                     
-                    // Позиционируем клетку
-                    cell.style.left = `${(x + gameState.viewOffset.x) * CONFIG.CELL_SIZE}px`;
-                    cell.style.top = `${(y + gameState.viewOffset.y) * CONFIG.CELL_SIZE}px`;
+                    // Позиционирование
+                    cell.style.left = `${boardSize/2 + x * CONFIG.CELL_SIZE - offsetX - CONFIG.CELL_SIZE/2}px`;
+                    cell.style.top = `${boardSize/2 + y * CONFIG.CELL_SIZE - offsetY - CONFIG.CELL_SIZE/2}px`;
                     
-                    // Отображаем содержимое клетки
+                    // Отображение фигур
                     const key = `${x},${y}`;
                     if (gameState.board[key]) {
                         cell.classList.add(gameState.board[key]);
                     }
                     
-                    // Добавляем координаты
-                    const coords = document.createElement('div');
-                    coords.className = 'coordinates';
-                    coords.textContent = `${x},${y}`;
-                    cell.appendChild(coords);
+                    // Координаты
+                    if (gameState.showCoordinates && (x === 0 || y === 0 || Math.abs(x) === Math.floor(CONFIG.GRID_SIZE/2) || Math.abs(y) === Math.floor(CONFIG.GRID_SIZE/2))) {
+                        const coords = document.createElement('div');
+                        coords.className = 'coordinates';
+                        coords.textContent = `${x},${y}`;
+                        coords.style.left = `${CONFIG.CELL_SIZE/2}px`;
+                        coords.style.top = `${CONFIG.CELL_SIZE/2}px`;
+                        cell.appendChild(coords);
+                    }
                     
-                    // Обработчик клика
                     cell.addEventListener('click', () => makeMove(x, y));
-                    
                     gameBoard.appendChild(cell);
                 }
             }
+            
+            // Центральный маркер
+            const centerMarker = document.createElement('div');
+            centerMarker.className = 'center-marker';
+            centerMarker.style.left = `${boardSize/2 - offsetX}px`;
+            centerMarker.style.top = `${boardSize/2 - offsetY}px`;
+            gameBoard.appendChild(centerMarker);
         }
 
         // Выполнение хода
@@ -331,27 +621,25 @@
             if (gameState.board[key]) return;
             
             gameState.board[key] = 'x';
+            gameState.lastMoves.push({ x, y, player: 'x' });
+            gameState.moveCount++;
+            
+            updateLastMoves();
+            scoreElement.textContent = `Ходов: ${gameState.moveCount}`;
             
             if (checkWin(x, y, 'x')) {
-                gameState.gameOver = true;
-                winMessageElement.textContent = 'Вы победили!';
-                statusElement.textContent = 'Игра окончена';
-                renderBoard();
-                return;
-            }
-            
-            if (Object.keys(gameState.board).length >= 1000) { // Защита от бесконечной игры
-                gameState.gameOver = true;
-                winMessageElement.textContent = 'Ничья! Слишком много ходов!';
-                statusElement.textContent = 'Игра окончена';
-                renderBoard();
+                showWinMessage('🎉 Поздравляем! Вы победили!');
                 return;
             }
             
             gameState.currentPlayer = 'o';
-            statusElement.textContent = 'Ход бота (O)...';
+            statusElement.textContent = 'Ход бота (Нолики)...';
+            statusElement.style.borderLeftColor = '#3498db';
             
-            setTimeout(makeBotMove, 500);
+            renderBoard();
+            
+            // Ход бота с задержкой
+            setTimeout(makeBotMove, 800);
         }
 
         // Ход бота
@@ -363,50 +651,75 @@
                 const { x, y } = move;
                 const key = `${x},${y}`;
                 gameState.board[key] = 'o';
+                gameState.lastMoves.push({ x, y, player: 'o' });
+                gameState.moveCount++;
+                
+                updateLastMoves();
+                scoreElement.textContent = `Ходов: ${gameState.moveCount}`;
                 
                 if (checkWin(x, y, 'o')) {
-                    gameState.gameOver = true;
-                    winMessageElement.textContent = 'Бот победил!';
-                    statusElement.textContent = 'Игра окончена';
-                    renderBoard();
-                    return;
-                }
-                
-                if (Object.keys(gameState.board).length >= 1000) {
-                    gameState.gameOver = true;
-                    winMessageElement.textContent = 'Ничья! Слишком много ходов!';
-                    statusElement.textContent = 'Игра окончена';
-                    renderBoard();
+                    showWinMessage('🤖 Бот победил! Попробуйте еще раз!');
                     return;
                 }
                 
                 gameState.currentPlayer = 'x';
-                statusElement.textContent = 'Ваш ход (X)';
-                renderBoard();
+                statusElement.textContent = 'Ваш ход (Крестики)';
+                statusElement.style.borderLeftColor = '#e74c3c';
                 
-                // Прокручиваем к ходу бота
+                renderBoard();
                 centerOnCell(x, y);
             }
         }
 
-        // Центрирование view на клетке
+        // Центрирование на клетке
         function centerOnCell(x, y) {
             const scale = CONFIG.ZOOM_LEVELS[gameState.zoomLevel];
-            const scaledCellSize = CONFIG.CELL_SIZE * scale;
-            
             gameState.viewOffset.x = -x;
             gameState.viewOffset.y = -y;
-            
             renderBoard();
-            centerView();
         }
 
-        // Алгоритм поиска лучшего хода для бота
+        // Обновление списка последних ходов
+        function updateLastMoves() {
+            lastMovesElement.innerHTML = '';
+            const recentMoves = gameState.lastMoves.slice(-10).reverse();
+            
+            if (recentMoves.length === 0) {
+                lastMovesElement.innerHTML = '<div class="move-item">Игра еще не началась</div>';
+                return;
+            }
+            
+            recentMoves.forEach(move => {
+                const moveItem = document.createElement('div');
+                moveItem.className = `move-item ${move.player}`;
+                const playerSymbol = move.player === 'x' ? '❌' : '⭕';
+                moveItem.textContent = `${playerSymbol} (${move.x}, ${move.y})`;
+                lastMovesElement.appendChild(moveItem);
+            });
+        }
+
+        // Показать сообщение о победе
+        function showWinMessage(message) {
+            gameState.gameOver = true;
+            
+            const winMessage = document.createElement('div');
+            winMessage.className = 'win-message pulse';
+            winMessage.innerHTML = `
+                <div class="win-title">${message}</div>
+                <div class="win-subtitle">Сделано ходов: ${gameState.moveCount}</div>
+                <button class="btn btn-success" onclick="initGame()" style="margin-top: 15px;">
+                    🔄 Новая игра
+                </button>
+            `;
+            
+            document.body.appendChild(winMessage);
+        }
+
+        // Алгоритм бота (упрощенная версия)
         function findBestMove() {
-            // Собираем все возможные ходы вокруг существующих фигур
             const candidateMoves = new Set();
             
-            // Добавляем клетки вокруг всех существующих ходов
+            // Собираем клетки вокруг существующих фигур
             Object.keys(gameState.board).forEach(key => {
                 const [x, y] = key.split(',').map(Number);
                 for (let dx = -2; dx <= 2; dx++) {
@@ -422,89 +735,50 @@
                 }
             });
             
-            // Если нет кандидатов, начинаем с центра
-            if (candidateMoves.size === 0) {
-                candidateMoves.add('0,0');
-            }
+            // Если поле пустое, начинаем с центра
+            if (candidateMoves.size === 0) return { x: 0, y: 0 };
             
-            let bestScore = -Infinity;
-            let bestMove = null;
-            
-            // Проверяем выигрыш за один ход
-            for (const key of candidateMoves) {
+            // Преобразуем в массив для оценки
+            const movesArray = Array.from(candidateMoves).map(key => {
                 const [x, y] = key.split(',').map(Number);
-                gameState.board[key] = 'o';
-                if (checkWin(x, y, 'o')) {
-                    gameState.board[key] = undefined;
-                    return { x, y };
-                }
-                gameState.board[key] = undefined;
-            }
+                return { x, y, score: evaluatePosition(x, y, 'o') };
+            });
             
-            // Блокируем выигрыш противника
-            for (const key of candidateMoves) {
-                const [x, y] = key.split(',').map(Number);
-                gameState.board[key] = 'x';
-                if (checkWin(x, y, 'x')) {
-                    gameState.board[key] = undefined;
-                    return { x, y };
-                }
-                gameState.board[key] = undefined;
-            }
-            
-            // Оцениваем все кандидаты
-            const movesArray = Array.from(candidateMoves);
-            for (const key of movesArray) {
-                const [x, y] = key.split(',').map(Number);
-                const score = evaluatePosition(x, y, 'o');
-                if (score > bestScore) {
-                    bestScore = score;
-                    bestMove = { x, y };
-                }
-            }
-            
-            return bestMove;
+            // Сортируем по оценке и берем лучший ход
+            movesArray.sort((a, b) => b.score - a.score);
+            return movesArray[0];
         }
 
         // Оценка позиции
         function evaluatePosition(x, y, player) {
             let score = 0;
-            const opponent = player === 'x' ? 'o' : 'x';
-            
             const directions = [
                 { dx: 1, dy: 0 }, { dx: 0, dy: 1 }, 
                 { dx: 1, dy: 1 }, { dx: 1, dy: -1 }
             ];
             
-            for (const dir of directions) {
+            directions.forEach(dir => {
                 let playerCount = 0;
-                let opponentCount = 0;
                 let emptyCount = 0;
                 
-                // Проверяем линию длиной WIN_LENGTH в обе стороны
-                for (let i = -CONFIG.WIN_LENGTH + 1; i < CONFIG.WIN_LENGTH; i++) {
+                for (let i = -4; i <= 4; i++) {
                     const checkX = x + dir.dx * i;
                     const checkY = y + dir.dy * i;
                     const key = `${checkX},${checkY}`;
                     
-                    if (i >= 0 && i < CONFIG.WIN_LENGTH) {
-                        if (gameState.board[key] === player) playerCount++;
-                        else if (gameState.board[key] === opponent) opponentCount++;
-                        else emptyCount++;
+                    if (i === 0) continue; // Пропускаем центральную клетку
+                    
+                    if (gameState.board[key] === player) {
+                        playerCount++;
+                    } else if (!gameState.board[key]) {
+                        emptyCount++;
                     }
                 }
                 
-                // Оцениваем потенциал линии
-                if (playerCount === CONFIG.WIN_LENGTH - 1 && emptyCount === 1) score += 1000;
-                else if (playerCount === CONFIG.WIN_LENGTH - 2 && emptyCount === 2) score += 100;
-                else if (opponentCount === CONFIG.WIN_LENGTH - 1 && emptyCount === 1) score += 500;
-                else if (opponentCount === CONFIG.WIN_LENGTH - 2 && emptyCount === 2) score += 50;
-                else score += playerCount * 10 - opponentCount * 15;
-            }
-            
-            // Центральные позиции ценнее
-            const distanceFromCenter = Math.abs(x) + Math.abs(y);
-            score += Math.max(0, 10 - distanceFromCenter);
+                if (playerCount >= 4) score += 1000;
+                else if (playerCount === 3 && emptyCount >= 1) score += 100;
+                else if (playerCount === 2) score += 10;
+            });
             
             return score;
         }
@@ -519,20 +793,26 @@
             for (const dir of directions) {
                 let count = 1;
                 
+                // Проверяем в одном направлении
                 for (let i = 1; i < CONFIG.WIN_LENGTH; i++) {
                     const checkX = x + dir.dx * i;
                     const checkY = y + dir.dy * i;
-                    const key = `${checkX},${checkY}`;
-                    if (gameState.board[key] === player) count++;
-                    else break;
+                    if (gameState.board[`${checkX},${checkY}`] === player) {
+                        count++;
+                    } else {
+                        break;
+                    }
                 }
                 
+                // Проверяем в противоположном направлении
                 for (let i = 1; i < CONFIG.WIN_LENGTH; i++) {
                     const checkX = x - dir.dx * i;
                     const checkY = y - dir.dy * i;
-                    const key = `${checkX},${checkY}`;
-                    if (gameState.board[key] === player) count++;
-                    else break;
+                    if (gameState.board[`${checkX},${checkY}`] === player) {
+                        count++;
+                    } else {
+                        break;
+                    }
                 }
                 
                 if (count >= CONFIG.WIN_LENGTH) return true;
@@ -541,20 +821,15 @@
             return false;
         }
 
-        // Обработчики событий
-        resetBtn.addEventListener('click', initGame);
-        botMoveBtn.addEventListener('click', () => {
-            if (!gameState.gameOver && gameState.currentPlayer === 'o') {
-                makeBotMove();
+        // Обработчики событий для перетаскивания
+        gameBoard.addEventListener('mousedown', (e) => {
+            if (e.button === 2) { // Правая кнопка мыши
+                isDragging = true;
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+                gameBoard.style.cursor = 'grabbing';
+                e.preventDefault();
             }
-        });
-
-        // Перетаскивание для навигации
-        boardContainer.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            lastMouseX = e.clientX;
-            lastMouseY = e.clientY;
-            boardContainer.style.cursor = 'grabbing';
         });
 
         document.addEventListener('mousemove', (e) => {
@@ -563,30 +838,39 @@
             const deltaX = e.clientX - lastMouseX;
             const deltaY = e.clientY - lastMouseY;
             
-            gameState.viewOffset.x -= deltaX / (CONFIG.CELL_SIZE * CONFIG.ZOOM_LEVELS[gameState.zoomLevel]);
-            gameState.viewOffset.y -= deltaY / (CONFIG.CELL_SIZE * CONFIG.ZOOM_LEVELS[gameState.zoomLevel]);
+            const scale = CONFIG.ZOOM_LEVELS[gameState.zoomLevel];
+            gameState.viewOffset.x += deltaX / (CONFIG.CELL_SIZE * scale);
+            gameState.viewOffset.y += deltaY / (CONFIG.CELL_SIZE * scale);
             
             lastMouseX = e.clientX;
             lastMouseY = e.clientY;
             
-            renderBoard();
+            // Используем requestAnimationFrame для плавности
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            animationFrameId = requestAnimationFrame(() => renderBoard());
         });
 
         document.addEventListener('mouseup', () => {
             isDragging = false;
-            boardContainer.style.cursor = 'default';
+            gameBoard.style.cursor = 'grab';
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
         });
+
+        // Масштабирование колесом мыши
+        gameBoard.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            if (e.deltaY < 0) {
+                zoomIn();
+            } else {
+                zoomOut();
+            }
+        });
+
+        // Запрещаем контекстное меню на поле
+        gameBoard.addEventListener('contextmenu', (e) => e.preventDefault());
 
         // Запуск игры
-        window.addEventListener('load', () => {
-            initGame();
-            centerView();
-        });
-
-        // Предотвращаем выделение текста при перетаскивании
-        document.addEventListener('selectstart', (e) => {
-            if (isDragging) e.preventDefault();
-        });
+        window.addEventListener('load', initGame);
     </script>
 </body>
 </html>
