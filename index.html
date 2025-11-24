@@ -11,6 +11,7 @@
             background-color: #f0f0f0;
             margin: 0;
             padding: 20px;
+            overflow: hidden;
         }
         
         h1 {
@@ -25,6 +26,7 @@
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            max-width: 95vw;
         }
         
         .game-info {
@@ -33,29 +35,36 @@
             color: #555;
         }
         
-        .game-board {
+        .game-board-container {
             position: relative;
             overflow: auto;
-            max-width: 90vw;
             max-height: 70vh;
             border: 2px solid #333;
             margin: 0 auto;
+            background: 
+                linear-gradient(90deg, #ccc 1px, transparent 1px),
+                linear-gradient(0deg, #ccc 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+        
+        #gameBoard {
+            position: relative;
+            min-width: 600px;
+            min-height: 600px;
         }
         
         .cell {
             width: 40px;
             height: 40px;
-            border: 1px solid #ccc;
-            display: inline-block;
-            box-sizing: border-box;
-            vertical-align: top;
-            position: relative;
+            position: absolute;
             cursor: pointer;
-            background-color: #fff;
+            background-color: rgba(255, 255, 255, 0.8);
+            border: 1px solid #ddd;
+            box-sizing: border-box;
         }
         
         .cell:hover {
-            background-color: #f9f9f9;
+            background-color: rgba(240, 240, 240, 0.9);
         }
         
         .x::before, .x::after {
@@ -83,6 +92,24 @@
             height: 70%;
             border: 4px solid #3498db;
             border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        .coordinates {
+            font-size: 10px;
+            color: #999;
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+        }
+        
+        .center-marker {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: red;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
@@ -119,25 +146,37 @@
             color: #e74c3c;
         }
         
-        .coordinates {
-            font-size: 12px;
-            color: #999;
-            position: absolute;
-            bottom: 2px;
-            right: 2px;
+        .view-controls {
+            margin: 10px 0;
+        }
+        
+        .view-controls button {
+            padding: 5px 10px;
+            font-size: 14px;
+            background-color: #3498db;
         }
     </style>
 </head>
 <body>
-    <h1>Крестики-нолики 5 в ряд</h1>
+    <h1>Крестики-нолики 5 в ряд на бесконечном поле</h1>
     
     <div class="game-container">
         <div class="game-info">
             <span id="status">Ваш ход (X)</span>
         </div>
         
-        <div class="game-board" id="gameBoard">
-            <!-- Игровое поле будет генерироваться здесь -->
+        <div class="view-controls">
+            <button onclick="zoomOut()">-</button>
+            <button onclick="resetView()">Сброс вида</button>
+            <button onclick="zoomIn()">+</button>
+            Масштаб: <span id="zoomLevel">100%</span>
+        </div>
+        
+        <div class="game-board-container" id="boardContainer">
+            <div id="gameBoard">
+                <!-- Клетки будут добавляться динамически -->
+                <div class="center-marker"></div>
+            </div>
         </div>
         
         <div class="controls">
@@ -151,28 +190,33 @@
     <script>
         // Конфигурация игры
         const CONFIG = {
-            WIN_LENGTH: 5, // Количество символов для победы
-            CELL_SIZE: 40,  // Размер ячейки в пикселях
-            BOARD_SIZE: 15  // Начальный размер поля (будет расширяться)
+            WIN_LENGTH: 5,
+            CELL_SIZE: 40,
+            VISIBLE_RADIUS: 8, // Сколько клеток показывать вокруг центра
+            ZOOM_LEVELS: [0.5, 0.75, 1, 1.25, 1.5, 2]
         };
 
         // Состояние игры
         let gameState = {
-            board: {}, // Хранит состояние клеток в формате { "x,y": "x" или "o" }
-            currentPlayer: 'x', // Текущий игрок (x - человек, o - бот)
+            board: {}, // { "x,y": "x" или "o" }
+            currentPlayer: 'x',
             gameOver: false,
-            minX: 0,
-            maxX: 0,
-            minY: 0,
-            maxY: 0
+            zoomLevel: 2, // Индекс в ZOOM_LEVELS
+            viewOffset: { x: 0, y: 0 }
         };
 
         // Элементы DOM
         const gameBoard = document.getElementById('gameBoard');
+        const boardContainer = document.getElementById('boardContainer');
         const statusElement = document.getElementById('status');
         const winMessageElement = document.getElementById('winMessage');
         const resetBtn = document.getElementById('resetBtn');
         const botMoveBtn = document.getElementById('botMoveBtn');
+        const zoomLevelElement = document.getElementById('zoomLevel');
+
+        // Переменные для перетаскивания
+        let isDragging = false;
+        let lastMouseX, lastMouseY;
 
         // Инициализация игры
         function initGame() {
@@ -180,56 +224,84 @@
                 board: {},
                 currentPlayer: 'x',
                 gameOver: false,
-                minX: -Math.floor(CONFIG.BOARD_SIZE / 2),
-                maxX: Math.floor(CONFIG.BOARD_SIZE / 2),
-                minY: -Math.floor(CONFIG.BOARD_SIZE / 2),
-                maxY: Math.floor(CONFIG.BOARD_SIZE / 2)
+                zoomLevel: 2,
+                viewOffset: { x: 0, y: 0 }
             };
             
             winMessageElement.textContent = '';
             statusElement.textContent = 'Ваш ход (X)';
+            updateZoom();
             renderBoard();
+        }
+
+        // Обновление масштаба
+        function updateZoom() {
+            const scale = CONFIG.ZOOM_LEVELS[gameState.zoomLevel];
+            gameBoard.style.transform = `scale(${scale})`;
+            zoomLevelElement.textContent = `${scale * 100}%`;
+            
+            // Обновляем размер контейнера для корректного скролла
+            const baseSize = CONFIG.CELL_SIZE * (CONFIG.VISIBLE_RADIUS * 2 + 1);
+            boardContainer.style.width = `${baseSize * scale}px`;
+            boardContainer.style.height = `${baseSize * scale}px`;
+        }
+
+        function zoomIn() {
+            if (gameState.zoomLevel < CONFIG.ZOOM_LEVELS.length - 1) {
+                gameState.zoomLevel++;
+                updateZoom();
+                renderBoard();
+            }
+        }
+
+        function zoomOut() {
+            if (gameState.zoomLevel > 0) {
+                gameState.zoomLevel--;
+                updateZoom();
+                renderBoard();
+            }
+        }
+
+        function resetView() {
+            gameState.zoomLevel = 2;
+            gameState.viewOffset = { x: 0, y: 0 };
+            updateZoom();
+            renderBoard();
+            centerView();
+        }
+
+        function centerView() {
+            boardContainer.scrollLeft = boardContainer.scrollWidth / 2 - boardContainer.clientWidth / 2;
+            boardContainer.scrollTop = boardContainer.scrollHeight / 2 - boardContainer.clientHeight / 2;
         }
 
         // Отрисовка игрового поля
         function renderBoard() {
-            gameBoard.innerHTML = '';
+            // Очищаем только клетки, оставляем center-marker
+            const cells = gameBoard.querySelectorAll('.cell');
+            cells.forEach(cell => cell.remove());
             
-            // Создаем таблицу для отображения координат
-            const table = document.createElement('table');
-            table.style.borderCollapse = 'collapse';
+            const scale = CONFIG.ZOOM_LEVELS[gameState.zoomLevel];
+            const scaledCellSize = CONFIG.CELL_SIZE * scale;
             
-            // Создаем заголовки для осей
-            const headerRow = document.createElement('tr');
-            const emptyHeader = document.createElement('th');
-            headerRow.appendChild(emptyHeader);
+            // Определяем видимую область
+            const centerX = Math.floor(gameBoard.offsetWidth / 2 / scaledCellSize) - gameState.viewOffset.x;
+            const centerY = Math.floor(gameBoard.offsetHeight / 2 / scaledCellSize) - gameState.viewOffset.y;
             
-            for (let x = gameState.minX; x <= gameState.maxX; x++) {
-                const th = document.createElement('th');
-                th.textContent = x;
-                th.style.width = `${CONFIG.CELL_SIZE}px`;
-                th.style.height = `${CONFIG.CELL_SIZE}px`;
-                headerRow.appendChild(th);
-            }
-            table.appendChild(headerRow);
-            
-            // Создаем строки с координатами и клетками
-            for (let y = gameState.minY; y <= gameState.maxY; y++) {
-                const row = document.createElement('tr');
-                
-                // Добавляем координату Y
-                const yCoord = document.createElement('td');
-                yCoord.textContent = y;
-                yCoord.style.textAlign = 'center';
-                yCoord.style.fontWeight = 'bold';
-                row.appendChild(yCoord);
-                
-                // Добавляем клетки для этой строки
-                for (let x = gameState.minX; x <= gameState.maxX; x++) {
-                    const cell = document.createElement('td');
+            // Создаем клетки в видимой области
+            for (let dx = -CONFIG.VISIBLE_RADIUS; dx <= CONFIG.VISIBLE_RADIUS; dx++) {
+                for (let dy = -CONFIG.VISIBLE_RADIUS; dy <= CONFIG.VISIBLE_RADIUS; dy++) {
+                    const x = centerX + dx;
+                    const y = centerY + dy;
+                    
+                    const cell = document.createElement('div');
                     cell.className = 'cell';
                     cell.dataset.x = x;
                     cell.dataset.y = y;
+                    
+                    // Позиционируем клетку
+                    cell.style.left = `${(x + gameState.viewOffset.x) * CONFIG.CELL_SIZE}px`;
+                    cell.style.top = `${(y + gameState.viewOffset.y) * CONFIG.CELL_SIZE}px`;
                     
                     // Отображаем содержимое клетки
                     const key = `${x},${y}`;
@@ -237,16 +309,18 @@
                         cell.classList.add(gameState.board[key]);
                     }
                     
-                    // Добавляем обработчик клика
+                    // Добавляем координаты
+                    const coords = document.createElement('div');
+                    coords.className = 'coordinates';
+                    coords.textContent = `${x},${y}`;
+                    cell.appendChild(coords);
+                    
+                    // Обработчик клика
                     cell.addEventListener('click', () => makeMove(x, y));
                     
-                    row.appendChild(cell);
+                    gameBoard.appendChild(cell);
                 }
-                
-                table.appendChild(row);
             }
-            
-            gameBoard.appendChild(table);
         }
 
         // Выполнение хода
@@ -254,32 +328,29 @@
             if (gameState.gameOver || gameState.currentPlayer !== 'x') return;
             
             const key = `${x},${y}`;
-            if (gameState.board[key]) return; // Клетка уже занята
+            if (gameState.board[key]) return;
             
-            // Выполняем ход
             gameState.board[key] = 'x';
             
-            // Проверяем победу
             if (checkWin(x, y, 'x')) {
                 gameState.gameOver = true;
                 winMessageElement.textContent = 'Вы победили!';
                 statusElement.textContent = 'Игра окончена';
+                renderBoard();
                 return;
             }
             
-            // Проверяем ничью
-            if (isBoardFull()) {
+            if (Object.keys(gameState.board).length >= 1000) { // Защита от бесконечной игры
                 gameState.gameOver = true;
-                winMessageElement.textContent = 'Ничья!';
+                winMessageElement.textContent = 'Ничья! Слишком много ходов!';
                 statusElement.textContent = 'Игра окончена';
+                renderBoard();
                 return;
             }
             
-            // Передаем ход боту
             gameState.currentPlayer = 'o';
             statusElement.textContent = 'Ход бота (O)...';
             
-            // Даем боту время на "обдумывание"
             setTimeout(makeBotMove, 500);
         }
 
@@ -293,10 +364,6 @@
                 const key = `${x},${y}`;
                 gameState.board[key] = 'o';
                 
-                // Обновляем границы поля при необходимости
-                updateBoardBounds(x, y);
-                
-                // Проверяем победу
                 if (checkWin(x, y, 'o')) {
                     gameState.gameOver = true;
                     winMessageElement.textContent = 'Бот победил!';
@@ -305,237 +372,173 @@
                     return;
                 }
                 
-                // Проверяем ничью
-                if (isBoardFull()) {
+                if (Object.keys(gameState.board).length >= 1000) {
                     gameState.gameOver = true;
-                    winMessageElement.textContent = 'Ничья!';
+                    winMessageElement.textContent = 'Ничья! Слишком много ходов!';
                     statusElement.textContent = 'Игра окончена';
                     renderBoard();
                     return;
                 }
                 
-                // Передаем ход человеку
                 gameState.currentPlayer = 'x';
                 statusElement.textContent = 'Ваш ход (X)';
                 renderBoard();
+                
+                // Прокручиваем к ходу бота
+                centerOnCell(x, y);
             }
+        }
+
+        // Центрирование view на клетке
+        function centerOnCell(x, y) {
+            const scale = CONFIG.ZOOM_LEVELS[gameState.zoomLevel];
+            const scaledCellSize = CONFIG.CELL_SIZE * scale;
+            
+            gameState.viewOffset.x = -x;
+            gameState.viewOffset.y = -y;
+            
+            renderBoard();
+            centerView();
         }
 
         // Алгоритм поиска лучшего хода для бота
         function findBestMove() {
-            // Сначала проверяем, можем ли мы выиграть следующим ходом
-            for (let y = gameState.minY; y <= gameState.maxY; y++) {
-                for (let x = gameState.minX; x <= gameState.maxX; x++) {
-                    const key = `${x},${y}`;
-                    if (!gameState.board[key]) {
-                        // Проверяем, приведет ли этот ход к победе
-                        gameState.board[key] = 'o';
-                        if (checkWin(x, y, 'o')) {
-                            gameState.board[key] = undefined;
-                            return { x, y };
+            // Собираем все возможные ходы вокруг существующих фигур
+            const candidateMoves = new Set();
+            
+            // Добавляем клетки вокруг всех существующих ходов
+            Object.keys(gameState.board).forEach(key => {
+                const [x, y] = key.split(',').map(Number);
+                for (let dx = -2; dx <= 2; dx++) {
+                    for (let dy = -2; dy <= 2; dy++) {
+                        if (dx === 0 && dy === 0) continue;
+                        const newX = x + dx;
+                        const newY = y + dy;
+                        const newKey = `${newX},${newY}`;
+                        if (!gameState.board[newKey]) {
+                            candidateMoves.add(newKey);
                         }
-                        gameState.board[key] = undefined;
                     }
                 }
+            });
+            
+            // Если нет кандидатов, начинаем с центра
+            if (candidateMoves.size === 0) {
+                candidateMoves.add('0,0');
             }
             
-            // Затем блокируем выигрышные ходы противника
-            for (let y = gameState.minY; y <= gameState.maxY; y++) {
-                for (let x = gameState.minX; x <= gameState.maxX; x++) {
-                    const key = `${x},${y}`;
-                    if (!gameState.board[key]) {
-                        gameState.board[key] = 'x';
-                        if (checkWin(x, y, 'x')) {
-                            gameState.board[key] = undefined;
-                            return { x, y };
-                        }
-                        gameState.board[key] = undefined;
-                    }
-                }
-            }
-            
-            // Ищем лучшую позицию для атаки или защиты
             let bestScore = -Infinity;
             let bestMove = null;
             
-            // Оцениваем все возможные ходы
-            for (let y = gameState.minY; y <= gameState.maxY; y++) {
-                for (let x = gameState.minX; x <= gameState.maxX; x++) {
-                    const key = `${x},${y}`;
-                    if (!gameState.board[key]) {
-                        const score = evaluatePosition(x, y, 'o');
-                        if (score > bestScore) {
-                            bestScore = score;
-                            bestMove = { x, y };
-                        }
-                    }
+            // Проверяем выигрыш за один ход
+            for (const key of candidateMoves) {
+                const [x, y] = key.split(',').map(Number);
+                gameState.board[key] = 'o';
+                if (checkWin(x, y, 'o')) {
+                    gameState.board[key] = undefined;
+                    return { x, y };
                 }
+                gameState.board[key] = undefined;
             }
             
-            // Если не нашли хороший ход, расширяем поле
-            if (!bestMove) {
-                // Находим занятые клетки и расширяем поле вокруг них
-                const occupiedCells = Object.keys(gameState.board).map(key => {
-                    const [x, y] = key.split(',').map(Number);
+            // Блокируем выигрыш противника
+            for (const key of candidateMoves) {
+                const [x, y] = key.split(',').map(Number);
+                gameState.board[key] = 'x';
+                if (checkWin(x, y, 'x')) {
+                    gameState.board[key] = undefined;
                     return { x, y };
-                });
-                
-                if (occupiedCells.length > 0) {
-                    // Выбираем случайную занятую клетку
-                    const randomCell = occupiedCells[Math.floor(Math.random() * occupiedCells.length)];
-                    
-                    // Находим свободную клетку рядом
-                    const directions = [
-                        { dx: 1, dy: 0 }, { dx: -1, dy: 0 },
-                        { dx: 0, dy: 1 }, { dx: 0, dy: -1 },
-                        { dx: 1, dy: 1 }, { dx: -1, dy: -1 },
-                        { dx: 1, dy: -1 }, { dx: -1, dy: 1 }
-                    ];
-                    
-                    for (const dir of directions) {
-                        const newX = randomCell.x + dir.dx;
-                        const newY = randomCell.y + dir.dy;
-                        const key = `${newX},${newY}`;
-                        
-                        if (!gameState.board[key]) {
-                            return { x: newX, y: newY };
-                        }
-                    }
                 }
-                
-                // Если все еще не нашли ход, возвращаем случайную клетку в центре
-                return { x: 0, y: 0 };
+                gameState.board[key] = undefined;
+            }
+            
+            // Оцениваем все кандидаты
+            const movesArray = Array.from(candidateMoves);
+            for (const key of movesArray) {
+                const [x, y] = key.split(',').map(Number);
+                const score = evaluatePosition(x, y, 'o');
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMove = { x, y };
+                }
             }
             
             return bestMove;
         }
 
-        // Оценка позиции для алгоритма бота
+        // Оценка позиции
         function evaluatePosition(x, y, player) {
             let score = 0;
+            const opponent = player === 'x' ? 'o' : 'x';
             
-            // Проверяем все направления
             const directions = [
-                { dx: 1, dy: 0 },   // Горизонталь
-                { dx: 0, dy: 1 },   // Вертикаль
-                { dx: 1, dy: 1 },   // Диагональ \
-                { dx: 1, dy: -1 }   // Диагональ /
+                { dx: 1, dy: 0 }, { dx: 0, dy: 1 }, 
+                { dx: 1, dy: 1 }, { dx: 1, dy: -1 }
             ];
             
             for (const dir of directions) {
-                // Проверяем линию в обе стороны от текущей позиции
-                let lineLength = 1; // Текущая клетка уже считается
+                let playerCount = 0;
+                let opponentCount = 0;
+                let emptyCount = 0;
                 
-                // Проверяем в положительном направлении
-                for (let i = 1; i < CONFIG.WIN_LENGTH; i++) {
+                // Проверяем линию длиной WIN_LENGTH в обе стороны
+                for (let i = -CONFIG.WIN_LENGTH + 1; i < CONFIG.WIN_LENGTH; i++) {
                     const checkX = x + dir.dx * i;
                     const checkY = y + dir.dy * i;
                     const key = `${checkX},${checkY}`;
                     
-                    if (gameState.board[key] === player) {
-                        lineLength++;
-                    } else if (gameState.board[key]) {
-                        // Встретили чужую фигуру - прерываем линию
-                        break;
-                    } else {
-                        // Свободная клетка - продолжаем
+                    if (i >= 0 && i < CONFIG.WIN_LENGTH) {
+                        if (gameState.board[key] === player) playerCount++;
+                        else if (gameState.board[key] === opponent) opponentCount++;
+                        else emptyCount++;
                     }
                 }
                 
-                // Проверяем в отрицательном направлении
-                for (let i = 1; i < CONFIG.WIN_LENGTH; i++) {
-                    const checkX = x - dir.dx * i;
-                    const checkY = y - dir.dy * i;
-                    const key = `${checkX},${checkY}`;
-                    
-                    if (gameState.board[key] === player) {
-                        lineLength++;
-                    } else if (gameState.board[key]) {
-                        // Встретили чужую фигуру - прерываем линию
-                        break;
-                    } else {
-                        // Свободная клетка - продолжаем
-                    }
-                }
-                
-                // Оцениваем длину линии
-                if (lineLength >= CONFIG.WIN_LENGTH) {
-                    score += 1000; // Победа
-                } else if (lineLength === CONFIG.WIN_LENGTH - 1) {
-                    score += 100; // Почти победа
-                } else if (lineLength === CONFIG.WIN_LENGTH - 2) {
-                    score += 10; // Хорошая позиция
-                } else {
-                    score += lineLength; // Просто добавляем длину
-                }
+                // Оцениваем потенциал линии
+                if (playerCount === CONFIG.WIN_LENGTH - 1 && emptyCount === 1) score += 1000;
+                else if (playerCount === CONFIG.WIN_LENGTH - 2 && emptyCount === 2) score += 100;
+                else if (opponentCount === CONFIG.WIN_LENGTH - 1 && emptyCount === 1) score += 500;
+                else if (opponentCount === CONFIG.WIN_LENGTH - 2 && emptyCount === 2) score += 50;
+                else score += playerCount * 10 - opponentCount * 15;
             }
+            
+            // Центральные позиции ценнее
+            const distanceFromCenter = Math.abs(x) + Math.abs(y);
+            score += Math.max(0, 10 - distanceFromCenter);
             
             return score;
         }
 
         // Проверка победы
         function checkWin(x, y, player) {
-            // Проверяем все направления
             const directions = [
-                { dx: 1, dy: 0 },   // Горизонталь
-                { dx: 0, dy: 1 },   // Вертикаль
-                { dx: 1, dy: 1 },   // Диагональ \
-                { dx: 1, dy: -1 }   // Диагональ /
+                { dx: 1, dy: 0 }, { dx: 0, dy: 1 }, 
+                { dx: 1, dy: 1 }, { dx: 1, dy: -1 }
             ];
             
             for (const dir of directions) {
-                let count = 1; // Текущая клетка уже считается
+                let count = 1;
                 
-                // Проверяем в положительном направлении
                 for (let i = 1; i < CONFIG.WIN_LENGTH; i++) {
                     const checkX = x + dir.dx * i;
                     const checkY = y + dir.dy * i;
                     const key = `${checkX},${checkY}`;
-                    
-                    if (gameState.board[key] === player) {
-                        count++;
-                    } else {
-                        break;
-                    }
+                    if (gameState.board[key] === player) count++;
+                    else break;
                 }
                 
-                // Проверяем в отрицательном направлении
                 for (let i = 1; i < CONFIG.WIN_LENGTH; i++) {
                     const checkX = x - dir.dx * i;
                     const checkY = y - dir.dy * i;
                     const key = `${checkX},${checkY}`;
-                    
-                    if (gameState.board[key] === player) {
-                        count++;
-                    } else {
-                        break;
-                    }
+                    if (gameState.board[key] === player) count++;
+                    else break;
                 }
                 
-                if (count >= CONFIG.WIN_LENGTH) {
-                    return true;
-                }
+                if (count >= CONFIG.WIN_LENGTH) return true;
             }
             
             return false;
-        }
-
-        // Проверка на ничью (все поле заполнено)
-        function isBoardFull() {
-            // В бесконечном поле ничья невозможна, но мы можем ограничить проверку текущей видимой областью
-            const totalCells = (gameState.maxX - gameState.minX + 1) * (gameState.maxY - gameState.minY + 1);
-            const occupiedCells = Object.keys(gameState.board).length;
-            
-            // Если все видимые клетки заняты, считаем ничью
-            return occupiedCells >= totalCells;
-        }
-
-        // Обновление границ поля при необходимости
-        function updateBoardBounds(x, y) {
-            if (x < gameState.minX) gameState.minX = x - 1;
-            if (x > gameState.maxX) gameState.maxX = x + 1;
-            if (y < gameState.minY) gameState.minY = y - 1;
-            if (y > gameState.maxY) gameState.maxY = y + 1;
         }
 
         // Обработчики событий
@@ -546,8 +549,44 @@
             }
         });
 
-        // Запуск игры при загрузке страницы
-        window.addEventListener('load', initGame);
+        // Перетаскивание для навигации
+        boardContainer.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+            boardContainer.style.cursor = 'grabbing';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            
+            const deltaX = e.clientX - lastMouseX;
+            const deltaY = e.clientY - lastMouseY;
+            
+            gameState.viewOffset.x -= deltaX / (CONFIG.CELL_SIZE * CONFIG.ZOOM_LEVELS[gameState.zoomLevel]);
+            gameState.viewOffset.y -= deltaY / (CONFIG.CELL_SIZE * CONFIG.ZOOM_LEVELS[gameState.zoomLevel]);
+            
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+            
+            renderBoard();
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+            boardContainer.style.cursor = 'default';
+        });
+
+        // Запуск игры
+        window.addEventListener('load', () => {
+            initGame();
+            centerView();
+        });
+
+        // Предотвращаем выделение текста при перетаскивании
+        document.addEventListener('selectstart', (e) => {
+            if (isDragging) e.preventDefault();
+        });
     </script>
 </body>
 </html>
