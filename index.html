@@ -171,23 +171,21 @@
             position: relative;
             background: #f8f9fa;
             border-radius: 15px;
-            overflow: hidden;
+            overflow: auto;
             box-shadow: inset 0 0 20px rgba(0,0,0,0.1);
-            min-height: 700px;
+            min-height: 600px;
+            max-height: 600px;
             border: 3px solid #2c3e50;
         }
         
         #gameBoard {
             position: relative;
-            width: 100%;
-            height: 100%;
-            min-height: 700px;
+            min-width: 600px;
+            min-height: 600px;
             background: 
                 repeating-linear-gradient(0deg, transparent, transparent 39px, #bdc3c7 40px),
                 repeating-linear-gradient(90deg, transparent, transparent 39px, #bdc3c7 40px);
             background-size: 40px 40px;
-            background-position: center center;
-            transition: all 0.3s ease;
         }
         
         .cell {
@@ -511,16 +509,6 @@
             font-weight: bold;
         }
         
-        .analysis-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 3;
-        }
-        
         @media (max-width: 768px) {
             .game-area {
                 flex-direction: column;
@@ -536,11 +524,13 @@
             }
             
             .board-container {
-                min-height: 500px;
+                min-height: 400px;
+                max-height: 400px;
             }
             
             #gameBoard {
-                min-height: 500px;
+                min-height: 400px;
+                min-width: 400px;
             }
         }
     </style>
@@ -628,11 +618,11 @@
     </div>
 
     <script>
-        // Конфигурация игры
+        // Уменьшим размер поля для лучшей видимости
         const CONFIG = {
             WIN_LENGTH: 5,
             CELL_SIZE: 40,
-            BOARD_SIZE: 19,
+            BOARD_SIZE: 15, // Уменьшили с 19 до 15 для лучшей видимости
             MOVE_DELAY: 500
         };
 
@@ -685,6 +675,16 @@
             updateMovesList();
             updateActiveBot();
             renderBoard();
+            
+            // Автоматически прокручиваем к центру при инициализации
+            setTimeout(() => {
+                const boardContainer = document.querySelector('.board-container');
+                if (boardContainer) {
+                    const boardWidth = CONFIG.BOARD_SIZE * CONFIG.CELL_SIZE;
+                    boardContainer.scrollLeft = (boardWidth - boardContainer.clientWidth) / 2;
+                    boardContainer.scrollTop = (boardWidth - boardContainer.clientHeight) / 2;
+                }
+            }, 100);
         }
 
         // Запуск битвы ботов
@@ -829,6 +829,8 @@
                 const { x, y } = move;
                 const key = `${x},${y}`;
                 
+                console.log(`Бот ${gameState.currentPlayer} делает ход на (${x}, ${y})`);
+                
                 // Записываем ход
                 gameState.board[key] = gameState.currentPlayer;
                 gameState.lastMove = { x, y, player: gameState.currentPlayer };
@@ -867,20 +869,41 @@
                 
                 // Подсвечиваем последний ход
                 highlightLastMove();
+                
+                // Автоматически прокручиваем к последнему ходу
+                scrollToLastMove(x, y);
+            }
+        }
+
+        // Прокрутка к последнему ходу
+        function scrollToLastMove(x, y) {
+            const boardContainer = document.querySelector('.board-container');
+            if (boardContainer) {
+                const center = Math.floor(CONFIG.BOARD_SIZE / 2);
+                const cellX = (x + center) * CONFIG.CELL_SIZE;
+                const cellY = (y + center) * CONFIG.CELL_SIZE;
+                
+                // Плавная прокрутка к клетке
+                boardContainer.scrollTo({
+                    left: cellX - boardContainer.clientWidth / 2,
+                    top: cellY - boardContainer.clientHeight / 2,
+                    behavior: 'smooth'
+                });
             }
         }
 
         // Подсветка последнего хода
         function highlightLastMove() {
+            // Убираем подсветку со всех клеток
+            document.querySelectorAll('.cell.last-move').forEach(cell => {
+                cell.classList.remove('last-move');
+            });
+            
             if (gameState.lastMove) {
                 const { x, y } = gameState.lastMove;
                 const cellElement = document.querySelector(`.cell[data-x="${x}"][data-y="${y}"]`);
                 if (cellElement) {
                     cellElement.classList.add('last-move');
-                    // Убираем подсветку через 2 секунды
-                    setTimeout(() => {
-                        cellElement.classList.remove('last-move');
-                    }, 2000);
                 }
             }
         }
@@ -900,6 +923,11 @@
             const candidateMoves = new Set();
             const opponent = player === 'x' ? 'o' : 'x';
             
+            // Если поле пустое, начинаем с центра
+            if (Object.keys(gameState.board).length === 0) {
+                return { x: 0, y: 0 };
+            }
+            
             // Собираем клетки вокруг существующих фигур
             Object.keys(gameState.board).forEach(key => {
                 const [x, y] = key.split(',').map(Number);
@@ -908,7 +936,9 @@
                         if (dx === 0 && dy === 0) continue;
                         const newX = x + dx;
                         const newY = y + dy;
-                        if (Math.abs(newX) <= 9 && Math.abs(newY) <= 9) {
+                        // Ограничиваем область поиска размерами поля
+                        const halfSize = Math.floor(CONFIG.BOARD_SIZE / 2);
+                        if (Math.abs(newX) <= halfSize && Math.abs(newY) <= halfSize) {
                             const newKey = `${newX},${newY}`;
                             if (!gameState.board[newKey]) {
                                 candidateMoves.add(newKey);
@@ -918,8 +948,18 @@
                 }
             });
             
-            // Если поле пустое, начинаем с центра
-            if (candidateMoves.size === 0) return { x: 0, y: 0 };
+            // Если нет кандидатов, ищем любую свободную клетку
+            if (candidateMoves.size === 0) {
+                const halfSize = Math.floor(CONFIG.BOARD_SIZE / 2);
+                for (let x = -halfSize; x <= halfSize; x++) {
+                    for (let y = -halfSize; y <= halfSize; y++) {
+                        const key = `${x},${y}`;
+                        if (!gameState.board[key]) {
+                            candidateMoves.add(key);
+                        }
+                    }
+                }
+            }
             
             // Преобразуем в массив для оценки
             const movesArray = Array.from(candidateMoves).map(key => {
@@ -963,7 +1003,7 @@
             
             // Центральные позиции ценнее
             const distanceFromCenter = Math.abs(x) + Math.abs(y);
-            const centerBonus = Math.max(0, 15 - distanceFromCenter);
+            const centerBonus = Math.max(0, 10 - distanceFromCenter);
             
             return {
                 attack: attackScore + centerBonus,
@@ -984,7 +1024,8 @@
                 const checkY = y + dir.dy * i;
                 const key = `${checkX},${checkY}`;
                 
-                if (Math.abs(checkX) > 9 || Math.abs(checkY) > 9) {
+                const halfSize = Math.floor(CONFIG.BOARD_SIZE / 2);
+                if (Math.abs(checkX) > halfSize || Math.abs(checkY) > halfSize) {
                     continue;
                 } else if (gameState.board[key] === player) {
                     result.playerCount++;
@@ -1092,6 +1133,7 @@
             const center = Math.floor(CONFIG.BOARD_SIZE / 2);
             const boardSize = CONFIG.BOARD_SIZE * CONFIG.CELL_SIZE;
             
+            // Устанавливаем размер доски
             gameBoard.style.width = `${boardSize}px`;
             gameBoard.style.height = `${boardSize}px`;
             
