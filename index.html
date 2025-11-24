@@ -455,7 +455,7 @@
     <div class="container">
         <div class="game-header">
             <div class="game-info">
-                <div class="status" id="status">Подготовка к битве...</div>
+                <div class="status" id="status">Готов к битве! Нажми "Начать битву"</div>
                 <div class="stats">
                     <div class="stat-item bot1" id="bot1Stats">🤖 Бот 1: 0 побед</div>
                     <div class="stat-item" id="gameStats">🎮 Игр: 0</div>
@@ -466,7 +466,7 @@
                 <button class="btn btn-success" onclick="startBattle()" id="startBtn">
                     🚀 Начать битву
                 </button>
-                <button class="btn btn-warning" onclick="pauseResumeBattle()" id="pauseBtn">
+                <button class="btn btn-warning" onclick="pauseResumeBattle()" id="pauseBtn" disabled>
                     ⏸️ Пауза
                 </button>
                 <button class="btn btn-primary" onclick="resetBattle()" id="resetBtn">
@@ -569,6 +569,8 @@
         const gameStatsElement = document.getElementById('gameStats');
         const speedSlider = document.getElementById('speedSlider');
         const speedValue = document.getElementById('speedValue');
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
 
         // Инициализация игры
         function initGame() {
@@ -589,10 +591,12 @@
             
             gameState.isBattleRunning = true;
             gameState.isPaused = false;
-            document.getElementById('startBtn').disabled = true;
-            document.getElementById('pauseBtn').textContent = '⏸️ Пауза';
+            startBtn.disabled = true;
+            pauseBtn.disabled = false;
+            pauseBtn.textContent = '⏸️ Пауза';
             
             initGame();
+            statusElement.textContent = 'Битва началась! Бот 1 делает ход...';
             gameLoop();
         }
 
@@ -601,8 +605,7 @@
             if (!gameState.isBattleRunning) return;
             
             gameState.isPaused = !gameState.isPaused;
-            document.getElementById('pauseBtn').textContent = 
-                gameState.isPaused ? '▶️ Продолжить' : '⏸️ Пауза';
+            pauseBtn.textContent = gameState.isPaused ? '▶️ Продолжить' : '⏸️ Пауза';
             
             if (!gameState.isPaused) {
                 gameLoop();
@@ -613,9 +616,11 @@
         function resetBattle() {
             gameState.isBattleRunning = false;
             gameState.isPaused = false;
-            document.getElementById('startBtn').disabled = false;
-            document.getElementById('pauseBtn').textContent = '⏸️ Пауза';
+            startBtn.disabled = false;
+            pauseBtn.disabled = true;
+            pauseBtn.textContent = '⏸️ Пауза';
             initGame();
+            statusElement.textContent = 'Готов к битве! Нажми "Начать битву"';
         }
 
         // Основной игровой цикл
@@ -638,9 +643,10 @@
                             gameState.battleStats.gamesPlayed++;
                             updateBattleStats();
                             initGame();
+                            statusElement.textContent = 'Новая игра! Бот 1 делает ход...';
                             gameLoop();
                         }
-                    }, 1000);
+                    }, 1500);
                 }
             }, moveDelay);
         }
@@ -717,7 +723,7 @@
             return findBestMove('x', true);
         }
 
-        // Защитный бот (Бот 2 - нолики)
+        // Защитный бот (Бot 2 - нолики)
         function defensiveBot() {
             return findBestMove('o', false);
         }
@@ -735,7 +741,7 @@
                         if (dx === 0 && dy === 0) continue;
                         const newX = x + dx;
                         const newY = y + dy;
-                        if (Math.abs(newX) <= 9 && Math.abs(newY) <= 9) { // Ограничиваем область поиска
+                        if (Math.abs(newX) <= 9 && Math.abs(newY) <= 9) {
                             const newKey = `${newX},${newY}`;
                             if (!gameState.board[newKey]) {
                                 candidateMoves.add(newKey);
@@ -765,10 +771,10 @@
             
             // Сортируем по оценке и берем лучший ход
             movesArray.sort((a, b) => b.score - a.score);
-            return movesArray[0];
+            return movesArray[0] || { x: 0, y: 0 };
         }
 
-        // Оценка позиции (возвращает объект с оценкой атаки и защиты)
+        // Оценка позиции
         function evaluatePosition(x, y, player, opponent) {
             let attackScore = 0;
             let defenseScore = 0;
@@ -803,8 +809,7 @@
             let result = {
                 playerCount: 0,
                 opponentCount: 0,
-                emptyCount: 0,
-                pattern: []
+                emptyCount: 0
             };
             
             for (let i = -4; i <= 4; i++) {
@@ -813,16 +818,14 @@
                 const key = `${checkX},${checkY}`;
                 
                 if (Math.abs(checkX) > 9 || Math.abs(checkY) > 9) {
-                    result.pattern.push('border');
+                    // Выход за границы - считаем как блок
+                    continue;
                 } else if (gameState.board[key] === player) {
                     result.playerCount++;
-                    result.pattern.push('player');
                 } else if (gameState.board[key] === opponent) {
                     result.opponentCount++;
-                    result.pattern.push('opponent');
                 } else {
                     result.emptyCount++;
-                    result.pattern.push('empty');
                 }
             }
             
@@ -831,20 +834,50 @@
 
         // Оценка угрозы на линии
         function evaluateLineThreat(line, player) {
-            const centerIndex = 4; // Центральная позиция в массиве pattern
-            
-            // Проверяем различные шаблоны
-            for (let start = 0; start <= 4; start++) {
-                const segment = line.pattern.slice(start, start + 5);
-                const playerInSegment = segment.filter(cell => cell === 'player').length;
-                const emptyInSegment = segment.filter(cell => cell === 'empty').length;
-                
-                if (playerInSegment === 4 && emptyInSegment === 1) return 1000; // Победный ход
-                if (playerInSegment === 3 && emptyInSegment === 2) return 100;  // Сильная атака
-                if (playerInSegment === 2 && emptyInSegment === 3) return 10;   // Слабая атака
-            }
+            // Упрощенная оценка - считаем количество фигур игрока на линии
+            if (line.playerCount >= 4) return 1000;
+            if (line.playerCount === 3 && line.emptyCount >= 2) return 100;
+            if (line.playerCount === 2 && line.emptyCount >= 3) return 10;
             
             return line.playerCount;
+        }
+
+        // Проверка победы
+        function checkWin(x, y, player) {
+            const directions = [
+                { dx: 1, dy: 0 }, { dx: 0, dy: 1 }, 
+                { dx: 1, dy: 1 }, { dx: 1, dy: -1 }
+            ];
+            
+            for (const dir of directions) {
+                let count = 1;
+                
+                // Проверяем в одном направлении
+                for (let i = 1; i < CONFIG.WIN_LENGTH; i++) {
+                    const checkX = x + dir.dx * i;
+                    const checkY = y + dir.dy * i;
+                    if (gameState.board[`${checkX},${checkY}`] === player) {
+                        count++;
+                    } else {
+                        break;
+                    }
+                }
+                
+                // Проверяем в противоположном направлении
+                for (let i = 1; i < CONFIG.WIN_LENGTH; i++) {
+                    const checkX = x - dir.dx * i;
+                    const checkY = y - dir.dy * i;
+                    if (gameState.board[`${checkX},${checkY}`] === player) {
+                        count++;
+                    } else {
+                        break;
+                    }
+                }
+                
+                if (count >= CONFIG.WIN_LENGTH) return true;
+            }
+            
+            return false;
         }
 
         // Подсветка выигрышной линии
@@ -892,10 +925,117 @@
             }
         }
 
-        // Остальные функции (renderBoard, checkWin, showWinMessage, etc.) остаются похожими
-        // но адаптируются под автоматическую игру...
+        // Отрисовка игрового поля
+        function renderBoard() {
+            gameBoard.innerHTML = '';
+            
+            const center = Math.floor(CONFIG.BOARD_SIZE / 2);
+            const boardSize = CONFIG.BOARD_SIZE * CONFIG.CELL_SIZE;
+            
+            // Устанавливаем размер доски
+            gameBoard.style.width = `${boardSize}px`;
+            gameBoard.style.height = `${boardSize}px`;
+            
+            // Создаем клетки для ВСЕГО поля
+            for (let x = -center; x <= center; x++) {
+                for (let y = -center; y <= center; y++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.x = x;
+                    cell.dataset.y = y;
+                    
+                    // Позиционирование (центрируем поле)
+                    const posX = (x + center) * CONFIG.CELL_SIZE;
+                    const posY = (y + center) * CONFIG.CELL_SIZE;
+                    
+                    cell.style.left = `${posX}px`;
+                    cell.style.top = `${posY}px`;
+                    
+                    // Отображение фигур
+                    const key = `${x},${y}`;
+                    if (gameState.board[key]) {
+                        cell.classList.add(gameState.board[key]);
+                    }
+                    
+                    // Координаты для угловых и центральных клеток
+                    if (gameState.showCoordinates && 
+                        (x === -center || x === 0 || x === center || 
+                         y === -center || y === 0 || y === center)) {
+                        const coords = document.createElement('div');
+                        coords.className = 'coordinates';
+                        coords.textContent = `${x},${y}`;
+                        coords.style.left = `${CONFIG.CELL_SIZE/2}px`;
+                        coords.style.top = `${CONFIG.CELL_SIZE/2}px`;
+                        cell.appendChild(coords);
+                    }
+                }
+            }
+            
+            // Центральный маркер
+            const centerMarker = document.createElement('div');
+            centerMarker.className = 'center-marker';
+            centerMarker.style.left = `${boardSize/2}px`;
+            centerMarker.style.top = `${boardSize/2}px`;
+            gameBoard.appendChild(centerMarker);
+        }
 
-        // [Здесь должны быть реализации остальных функций...]
+        // Обновление списка ходов
+        function updateMovesList() {
+            movesListElement.innerHTML = '';
+            
+            if (gameState.moves.length === 0) {
+                movesListElement.innerHTML = '<div class="move-item">Игра еще не началась</div>';
+                return;
+            }
+            
+            const recentMoves = gameState.moves.slice(-10).reverse();
+            
+            recentMoves.forEach(move => {
+                const moveItem = document.createElement('div');
+                moveItem.className = `move-item ${move.player === 'x' ? 'bot1' : 'bot2'}`;
+                const playerSymbol = move.player === 'x' ? '❌' : '⭕';
+                moveItem.innerHTML = `
+                    <div>
+                        <strong>${move.bot}</strong><br>
+                        ${playerSymbol} (${move.x}, ${move.y})
+                    </div>
+                    <div class="move-time">${move.time}</div>
+                `;
+                movesListElement.appendChild(moveItem);
+            });
+        }
+
+        // Показать сообщение о победе
+        function showWinMessage(message) {
+            gameState.gameOver = true;
+            
+            const winMessage = document.createElement('div');
+            winMessage.className = 'win-message pulse';
+            winMessage.innerHTML = `
+                <div class="win-title">${message}</div>
+                <div class="win-subtitle">Сделано ходов: ${gameState.moveCount}</div>
+                <button class="btn btn-success" onclick="this.parentElement.remove()" style="margin-top: 15px;">
+                    👍 Понятно
+                </button>
+            `;
+            
+            document.body.appendChild(winMessage);
+        }
+
+        // Включение/выключение координат
+        function toggleCoordinates() {
+            gameState.showCoordinates = !gameState.showCoordinates;
+            document.querySelectorAll('.control-btn')[0].textContent = 
+                `📐 Координаты: ${gameState.showCoordinates ? 'Вкл' : 'Выкл'}`;
+            renderBoard();
+        }
+
+        // Включение/выключение анимаций
+        function toggleAnimations() {
+            gameState.animationsEnabled = !gameState.animationsEnabled;
+            document.querySelectorAll('.control-btn')[1].textContent = 
+                `✨ Анимации: ${gameState.animationsEnabled ? 'Вкл' : 'Выкл'}`;
+        }
 
         // Инициализация при загрузке
         window.addEventListener('load', function() {
@@ -908,9 +1048,6 @@
                 speedValue.textContent = value + 'мс';
             });
         });
-
-        // [Реализации renderBoard, checkWin, showWinMessage и других вспомогательных функций...]
-
     </script>
 </body>
 </html>
